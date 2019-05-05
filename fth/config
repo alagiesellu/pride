@@ -1,0 +1,15 @@
+# extension or filename ending you interested in.
+# Not Required!
+ty:
+
+# source folder path, for flash drive where recite in computer.
+# Required!
+src:/media/sellu
+
+# destination folder path, where copied files will be kept.
+# Required!
+ds:/home/sellu/Downloads/Software/Volt/fth/ds
+
+# sleep time in seconds, between 0 to 60. Time program should wait before copying again. Default is 60 seconds
+# Not Required!
+sleep:5

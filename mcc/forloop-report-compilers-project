@@ -1,0 +1,200 @@
+
+PARSER
+
+The production below is used to parse the for loop statement.In the a abstract syntax tree of the for loop makes a clean interface between it's parser and the later
+phases of a compiler. It has three ASTExpressionStatements which can be use for the initialization of the variable in the loop, the condition for handling the loop and the increment or the decrement of the loop and also the ASTStatement for the block of the loop. All are being set to expression statements.And finally generate the parse tree of the loop
+
+ASTForStatement forStatement() :
+{
+  ASTExpressionStatement s1 = null;
+  ASTExpression s2 = null;
+  ASTExpressionStatement s3 = null;
+  ASTStatement s = null;
+}
+{
+  < FOR > < LP > s1 = expressionStatement(false, false) < SE > s2 = orExpression() < SE > s3 = expressionStatement(false, false) < RP > 
+  s = statement()
+  {
+    return new ASTForStatement(s1, s2, s3, s);
+  }
+}
+
+
+ABSTRACT SYNTAX TREE
+
+We implemented the AST seperately to improve modularity of the compiler.The ASTE of the for loop have four instance variables which are  of ExpressionStatement ans Statement of type ASTNode. The ExpressionStatement includes initialization, update which are Expression statements for the condition, expression which is Expression for increment or decrement and finally statement which are the statements in the block.It also inherited the behaviours of the ASTEStatement. It do have the toString method for pretty printing and the accept for the visitor.
+
+
+package utg.mcc.parser.ast;
+
+import utg.mcc.parser.util.ASTIdentityTransformation;
+
+public class ASTForStatement extends ASTStatement {
+
+	public final ASTExpressionStatement initialization, update;
+	public final ASTExpression expression;
+	public final ASTNode statement;
+
+	public ASTForStatement(ASTExpressionStatement initialization, ASTExpression expression, ASTExpressionStatement update,
+			ASTNode statement) {
+		super();
+		this.initialization = initialization;
+		this.expression = expression;
+		this.update = update;
+		this.statement = statement;
+	}
+
+	@Override
+	public String toString() {
+		return "" + (new ASTIdentityTransformation()).visitForStatement(this, "");
+	}
+
+	@Override
+	public Object accept(ASTVisitor visitor, Object o) {
+		return visitor.visitForStatement(this, o);
+	}
+}
+
+
+VISITOR
+
+It is the virtual method for giving of AST for statement to the operations to be perform on it.
+
+public abstract Object visitForStatement(ASTForStatement forStatement, Object o);
+
+IDENTITY VISITOR
+
+This is the implementation of the identity transformation for the pretty printing of the for loop statement. It will first print the intilization the variables, then the conditions of the loop,the increment or decrements of the loop and finally the statements in block of the loop.
+
+	@Override
+	public Object visitForStatement(ASTForStatement forStatement, Object indent) {
+		String s = indent + "for " + "(" + forStatement.initialization.accept(this, "") + "; "
+				+ forStatement.expression.accept(this, "") + "; " + forStatement.update.accept(this, "") + ") ";
+		if (forStatement.statement instanceof ASTBlockStatement) {
+			s += forStatement.statement.accept(this, indent) + "\n";
+		} else {
+			s += forStatement.statement.accept(this, "");
+		}
+		return s;
+	}
+
+COMPUTE ADDRESSES
+
+For the semantic checking of the for loop statement. The scope analysis will detect all variables of for loop statement and
+assign them virtual addresses. It will detect all variables that have not been declared before usage.
+
+	@Override
+	public Object visitForStatement(ASTForStatement forStatement, Object o) {
+		forStatement.initialization.accept(this, null);
+		forStatement.expression.accept(this, null);
+		forStatement.update.accept(this, null);
+		forStatement.statement.accept(this, null);
+		return null;
+	}
+
+REACHABLE CODE
+
+Any statement following a return statement cannot be executed and is thus useless. To detect unreachable code in for loop, we need to test if a statement contains a return statement and mark the following statements as unreachable.
+
+	@Override
+	public Object visitForStatement(ASTForStatement forStatement, Object o) {
+		boolean reachable = (Boolean) o;
+		if (!reachable) {
+			m.error("unreachable statement at " + forStatement.position + "\n" + forStatement);
+		}
+		// a for statement contains a return statement if its statement
+		// contains a return statement
+		return forStatement.statement.accept(this, reachable);
+	}
+
+
+TYPE CHECKING
+
+Type checking only involves declarations and expressions in the for loop. We the type of an expression if it is of a type boolean or otherwise we throw an exception.
+
+	@Override
+	public Object visitForStatement(ASTForStatement forStatement, Object o) {
+		m.verbose("> for");
+		m.i();
+
+		Type type_e = (Type) forStatement.expression.accept(this, null);
+
+		if (!Type.checkType(BoolType.boolType(), type_e))
+			throw new RuntimeException("incompatible types near " + forStatement.expression.position);
+
+		forStatement.statement.accept(this, null);
+
+		forStatement.update.accept(this, null);
+
+		m.verbose("< for");
+		return null;
+	}
+
+THE INTERPRETER
+
+We load an instruction from the for loop code into the  memory. Then, we decode the instruction to find the operation and
+operands. Finally, we execute the operation. The interpreter will executes the for loop statemens by constructing the AST from the source code and generate the tree.
+
+	@Override
+	public Object visitForStatement(ASTForStatement forStatement, Object o) {
+		m.verbose("> for ");
+		m.i();
+		Constant r = null;
+
+		for (forStatement.initialization.accept(this,
+				o); (Integer) ((Constant) forStatement.expression.accept(this, o)).i.value != 0; forStatement.update
+						.accept(this, o)) {
+			if (!returned) {
+				r = (Constant) forStatement.statement.accept(this, o);
+			}
+		}
+		m.d();
+		m.verbose("< for [" + r + "]");
+		return r;
+	}
+
+THE COMPILER
+
+The for statement has three parts: initialization expression, condition expression and the update expression. These three control the loop.
+Firstly we generate code for the initiation expression. We then generate code for the condition begining with the start label which jumps to the true or end label based on he truth value. And then generate the code for the statement in the body begining with the true label and finally generate code for the update expression begining with an update label (this is for use by a continue statement which jumps to the update label when generating its code) followed by a jump satement to the start label and finally and end label. 
+
+		@Override
+	public Object visitForStatement(ASTForStatement forStatement, Object o) {
+		m.verbose("> for statement");
+		m.i();
+		String lstart = label();
+		String lend = label();
+		String lupdate = label();
+	  String lTrue = label();
+
+		emt("\t\t; start for");
+		emt("\t\t; for initialization");
+		forStatement.initialization.accept(this, null);
+
+		emt("\t\t; for condition");
+		eml(lstart);
+	  TrueFalse tf = new TrueFalse(lTrue, lend);
+
+		forStatement.expression.accept(this, tf);
+		emt("ifeq " + lend);
+		as(-1);
+
+	  emt("\t\t; true");
+	  eml(lTrue);
+		emt("\t\t; for statement");
+		forStatement.statement.accept(this, new TrueFalse(lupdate, lend));
+
+
+		eml(lupdate);
+		emt("\t\t; for update");
+		forStatement.update.accept(this, null);
+
+		emt("goto " + lstart);
+		eml(lend);
+		emt("\t\t; end for");
+		m.d();
+		m.verbose("< for statement");
+		return null;
+	}
+
+

@@ -1,0 +1,16 @@
+Value[][] values = { { new Value(1,2), new Value(3), new Value(-2,3), new Value(0) },
+				{ new Value(3,2), new Value(4), new Value(-2), new Value(-1) },
+				{ new Value(1,5), new Value(-6), new Value(4,8), new Value(-1,2) } };
+
+[1.0, 0.0, 0.0, -30000.0/-69000.0]
+[-0.0, 1.0, 0.0, 1.0/5.0]
+[-0.0, 0.0, 1.0, -5640.0/-4600.0]
+************************************************************************************************************
+Value[][] values = { { new Value(30000,2*69000), new Value(3,5), new Value(-2*5640,3*4600), new Value(0) },
+				{ new Value(3*30000,2*69000), new Value(4,5), new Value(-2*5640,4600), new Value(-1) },
+				{ new Value(30000,5*69000), new Value(-6,5), new Value(4*5640,8*4600), new Value(-1,2) } };
+				
+				
+[1.0, 0.0, 0.0, 1.0]
+[0.0, 1.0, 0.0, 1.0]
+[0.0, 0.0, 1.0, 1.0]
